@@ -1,173 +1,247 @@
-# Niramaya Setu - Backend Services
+# Niramaya Setu — Backend Services
 
-Production-grade, modular, and offline-first backend service for **Niramaya Setu** (निरामय सेतू) — an intelligent rural and semi-urban healthcare referral and patient tracking platform.
+Backend services for **Niramaya Setu**, an offline-first healthcare referral and care-continuity platform.
 
----
+> **Status:** Local development / prototype. PostgreSQL is integrated; ABDM, AI and voice services are currently configurable adapters/stubs.
 
-## 🌟 Key Capabilities
+## Core Capabilities
 
-1. **Offline-First Synchronization Engine**: Bi-directional idempotent batch sync (`push`/`pull`) using client-generated UUIDs, watermarks, and audit logging.
-2. **Patient Identity & Privacy**: Supports **Aadhaar** (SHA-256 tokenized + masked `XXXX-XXXX-1234` only; raw 12-digit Aadhaar is never persisted) and **ABHA** (14-digit number + `@abdm` address).
-3. **Deterministic Clinical Triage**: Explainable rule-based clinical triage engine categorizing cases into `EMERGENCY_RED`, `URGENT_YELLOW`, and `ROUTINE_GREEN` with vital threshold validation.
-4. **Intelligent Facility Matching**: Multi-criteria ranking based on geospatial coordinates (Haversine/PostGIS-ready), care tiers (Sub-Center, PHC, CHC, District Hospital), bed capacity, and specialized departments.
-5. **Referral Lifecycle & 48-Hour No-Show SLA**: Automated tracking from `DRAFT` → `ISSUED` → `IN_TRANSIT` → `ACKNOWLEDGED` → `COMPLETED`. Automatically flags `NO_SHOW` and creates escalation follow-up tasks for ASHA/ANM workers after 48 hours.
-6. **Integration-Ready ABDM & FHIR R4**: HL7 FHIR R4 standard serializers for `Patient`, `ServiceRequest`, `Encounter`, and `Practitioner`, alongside clean ABDM M1-M3 adapter boundaries.
-7. **Extensible AI & Marathi Voice Hooks**: Pluggable interfaces for LLM-assisted clinical reasoning and Marathi Speech-to-Text / Text-to-Speech (Bhashini/Indic STT).
+- JWT authentication and role-aware API access
+- Patient, referral, appointment and follow-up workflows
+- Healthcare facility and specialist discovery
+- Offline-first support with development fallbacks
+- PostgreSQL database with Prisma ORM
+- Redis/BullMQ support with in-memory development fallback
+- Helmet, CORS, rate limiting and request validation
+- Pluggable ABDM, AI and Marathi/Indic voice adapters
+- OpenAPI/Swagger API documentation
+- Automated and security-focused backend tests
 
----
+## Technology Stack
 
-## 🛠️ Technology Stack
+| Component | Technology |
+|---|---|
+| Runtime | Node.js |
+| Language | TypeScript |
+| API | Fastify |
+| Database | PostgreSQL |
+| ORM | Prisma |
+| Authentication | JWT + bcrypt |
+| Queue | BullMQ + Redis |
+| Validation | Zod |
+| API Docs | OpenAPI / Swagger |
+| Security | Helmet, CORS, Rate Limiting |
 
-- **Runtime & Framework**: Node.js (v20+) + TypeScript + Fastify
-- **Database & ORM**: PostgreSQL 16 + Prisma ORM
-- **Queue & Workers**: BullMQ + Redis (with resilient In-Memory fallback for local dev)
-- **Security**: Fastify Helmet, CORS, JWT authentication, bcrypt password hashing, PII-redacted logging
-- **Validation**: Zod schema validation
-- **Documentation**: Swagger OpenAPI 3.0 (`/docs`)
+## Project Structure
 
----
-
-## 📁 Project Structure
-
-```
-niramaya-setu backend/
+```text
+niramaya-setu-backend/
 ├── prisma/
-│   ├── schema.prisma              # Complete database schema & enums
-│   └── seed.ts                    # Development seed script (Demo health workers, facilities)
+│   ├── migrations/
+│   ├── schema.prisma
+│   └── seed.ts
 ├── src/
-│   ├── config/                    # Environment & configuration parser
-│   ├── plugins/                   # Fastify plugins (CORS, Helmet, JWT, Swagger)
 │   ├── common/
-│   │   ├── errors/                # Centralized error handler & HTTP error classes
-│   │   ├── validation/            # Zod validation helpers
-│   │   ├── logger/                # Sanitized logger masking health PII & tokens
-│   │   └── types/                 # Shared interfaces and types
+│   ├── config/
 │   ├── infrastructure/
-│   │   ├── database/              # Resilient Prisma client singleton
-│   │   ├── redis/                 # Redis client connection manager
-│   │   └── queue/                 # BullMQ & In-Memory SLA alert scheduler
 │   ├── modules/
-│   │   ├── auth/                  # Authentication & RBAC (ASHA, ANM, DOCTOR, ADMIN)
-│   │   ├── patients/              # Patient registry, Aadhaar tokenization, ABHA mapping
-│   │   ├── triage/                # Deterministic rule-based clinical triage engine
-│   │   ├── facilities/            # Facility catalog & geospatial matching engine
-│   │   ├── referrals/             # Referral workflow & status transitions
-│   │   ├── alerts/                # 24-hr reminders & 48-hr no-show escalation engine
-│   │   ├── sync/                  # Offline-first push/pull sync engine
-│   │   ├── fhir/                  # HL7 FHIR R4 resource serializers
-│   │   ├── abdm/                  # ABDM M1-M3 integration-ready adapters
-│   │   ├── ai/                    # Pluggable AI triage & summary interfaces
-│   │   └── voice/                 # Pluggable Marathi STT/TTS voice interfaces
+│   ├── plugins/
 │   ├── routes/
-│   │   └── index.ts               # Master route registry (/health & /api/v1/*)
-│   ├── app.ts                     # Fastify application factory (buildApp)
-│   └── server.ts                  # Server entrypoint & graceful shutdown
+│   └── security/
+├── test/
+├── scripts/
 ├── .env.example
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
 
----
-
-## 🚀 Getting Started
+## Local Setup
 
 ### 1. Prerequisites
-- Node.js (v20 or higher)
-- PostgreSQL (Local or Cloud instance e.g., Supabase / Neon / Docker)
-- Redis *(Optional for local development; system gracefully uses in-memory scheduler if Redis is unavailable)*
 
-### 2. Installation
-```bash
-# Clone or navigate to backend workspace
-cd "niramaya-setu backend"
+Install Node.js, Docker Desktop and Git.
 
-# Install dependencies
+### 2. Install dependencies
+
+```powershell
 npm install
 ```
 
-### 3. Environment Configuration
-Copy the sample environment file:
-```bash
-cp .env.example .env
-```
-Update `.env` with your PostgreSQL database connection URL:
+### 3. Configure environment
+
+Create `.env` from `.env.example`.
+
+Example local database configuration:
+
 ```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/niramaya_setu?schema=public"
-JWT_SECRET="your_secure_jwt_secret_min_32_characters"
 PORT=4000
+HOST=0.0.0.0
+NODE_ENV=development
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/niramaya_setu?schema=public
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASSWORD=
 ```
 
-### 4. Database Setup & Migrations
-```bash
-# Generate Prisma Client
+**Never commit `.env`, real API keys, passwords, JWT secrets or patient data.**
+
+### 4. Start PostgreSQL with Docker
+
+```powershell
+docker run -d `
+  --name niramaya-postgres `
+  -e POSTGRES_USER=postgres `
+  -e POSTGRES_PASSWORD=postgres `
+  -e POSTGRES_DB=niramaya_setu `
+  -p 5432:5432 `
+  postgres:16
+```
+
+Check:
+
+```powershell
+docker ps
+```
+
+### 5. Prisma
+
+```powershell
 npx prisma generate
-
-# Push schema to PostgreSQL database
-npx prisma db push
-
-# (Optional) Seed development data
-npm run prisma:seed
+npx prisma migrate dev
 ```
 
-### 5. Running the Application
-```bash
-# Start development server with auto-reload
-npm run dev
+Check migration state:
 
-# Or build and run in production mode
+```powershell
+npx prisma migrate status
+```
+
+### 6. Build and run
+
+```powershell
 npm run build
 npm start
 ```
 
-The server will start at:
-- **API Base URL**: `http://localhost:4000`
-- **Health Check**: `http://localhost:4000/health`
-- **Interactive Swagger Docs**: `http://localhost:4000/docs`
+The local API runs at:
 
----
+```text
+http://localhost:4000
+```
 
-## 🔐 Default Development Credentials (Seed Data)
+Health check:
 
-| Role | Username | Password | Assigned Location / Facility |
-| :--- | :--- | :--- | :--- |
-| **ASHA** | `asha_sunita` | `Password@123` | Karjat Rural Sub-Center |
-| **ANM** | `anm_priya` | `Password@123` | Neral Primary Health Center (PHC) |
-| **DOCTOR** | `dr_shinde` | `Password@123` | Panvel Community Health Center (CHC) |
-| **ADMIN** | `admin_niramaya` | `Password@123` | Raigad District Administration |
+```text
+http://localhost:4000/health
+```
 
----
+Swagger documentation:
 
-## 📡 Key API Endpoints (`/api/v1`)
+```text
+http://localhost:4000/docs
+```
 
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/health` | System health & dependency diagnostic | No |
-| `POST` | `/api/v1/auth/login` | Authenticate health worker / admin | No |
-| `POST` | `/api/v1/patients` | Register patient (Aadhaar hash / ABHA) | Yes (ASHA/ANM/Doc/Admin) |
-| `GET` | `/api/v1/patients` | Search & filter registered patients | Yes |
-| `GET` | `/api/v1/patients/:id/history` | Patient clinical history (triage & referrals) | Yes |
-| `POST` | `/api/v1/triage/calculate` | Compute deterministic triage category | No |
-| `POST` | `/api/v1/triage/save` | Evaluate & record triage assessment | Yes |
-| `GET` | `/api/v1/facilities/match` | Geospatial facility matching & ranking | No |
-| `POST` | `/api/v1/referrals` | Create referral with 48h SLA timer | Yes |
-| `GET` | `/api/v1/referrals/pending` | List pending referrals for facility | Yes |
-| `PATCH`| `/api/v1/referrals/:id/status` | Update referral status (In-Transit, Done) | Yes |
-| `GET` | `/api/v1/referrals/no-shows` | List breached 48h referrals for home visits | Yes |
-| `POST` | `/api/v1/sync/push` | Batch upload offline data with client UUIDs | Yes |
-| `POST` | `/api/v1/sync/pull` | Fetch incremental deltas since watermark | Yes |
-| `GET` | `/api/v1/fhir/Patient/:id` | HL7 FHIR R4 Patient Resource | Yes |
-| `GET` | `/api/v1/fhir/ServiceRequest/:id` | HL7 FHIR R4 Referral Resource | Yes |
-| `POST` | `/api/v1/abdm/generate-otp` | ABDM M1 Aadhaar OTP Stub | Yes |
-| `POST` | `/api/v1/abdm/verify-otp` | ABDM M1 Verify OTP Stub | Yes |
-| `POST` | `/api/v1/ai/triage-assist` | Pluggable AI clinical assistance | Yes |
-| `POST` | `/api/v1/voice/marathi/stt` | Pluggable Marathi Speech-to-Text | Yes |
-| `POST` | `/api/v1/voice/marathi/tts` | Pluggable Marathi Text-to-Speech | Yes |
+## Development Mode
 
----
+```powershell
+npm run dev
+```
 
-## 🔒 Security & Compliance Principles
+## Useful Commands
 
-1. **Aadhaar Protection**: Raw 12-digit Aadhaar numbers are never stored in plain text or logged. They are salted and tokenized via SHA-256 and stored alongside a masked string (`XXXX-XXXX-1234`).
-2. **Sanitized Logs**: The logging layer automatically redacts passwords, tokens, Authorization headers, and sensitive medical fields.
-3. **Integration Boundaries**: External integrations (ABDM Gateway, Bhashini STT/TTS, Google Gemini/LLMs) are abstracted behind strict TypeScript interfaces.
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Development server with reload |
+| `npm run build` | Compile TypeScript |
+| `npm start` | Start compiled backend |
+| `npm test` | Run tests |
+| `npm run typecheck` | Type-check without emitting |
+| `npm run prisma:generate` | Generate Prisma Client |
+| `npm run prisma:migrate` | Run Prisma migrations |
+| `npm run prisma:seed` | Seed development data |
+
+## Integration Architecture
+
+External services are kept behind configurable adapters.
+
+### ABDM
+
+ABDM integration currently supports sandbox/stub configuration. Production credentials and integration validation are still required.
+
+### AI
+
+```env
+AI_PROVIDER=stub
+AI_API_KEY=
+```
+
+The provider can be replaced without restructuring the core API.
+
+### Voice
+
+```env
+VOICE_PROVIDER=stub
+VOICE_API_KEY=
+```
+
+The current architecture supports a Marathi/Indic voice provider adapter.
+
+## Security
+
+Security is implemented as a backend concern, including:
+
+- JWT authentication
+- Password hashing
+- Request validation
+- Security headers
+- CORS controls
+- Rate limiting
+- Role-aware authorization
+- Structured security/event logging
+- Security-focused testing
+
+Before production deployment, replace development secrets, configure production CORS/rate limits, secure PostgreSQL and Redis, replace integration stubs, and perform a final privacy/security review.
+
+## Redis Behaviour
+
+Redis/BullMQ is supported for queue processing. During local development, supported functionality can fall back to an in-memory implementation when Redis is unavailable.
+
+For production, Redis should be configured and monitored rather than relying on the development fallback.
+
+## Frontend Integration
+
+The frontend communicates with this backend through the HTTP API.
+
+Local base URL:
+
+```text
+http://localhost:4000
+```
+
+Use environment variables for API URLs instead of hard-coding production endpoints.
+
+## Prototype Boundaries
+
+A successful local health check does not mean every external healthcare integration is production-ready. ABDM, AI and voice providers currently depend on their configured adapters/stubs and require separate production integration work.
+
+## GitHub
+
+Before committing:
+
+```powershell
+git status
+git diff
+```
+
+Then:
+
+```powershell
+git add README.md
+git commit -m "docs: update backend README"
+git push origin main
+```
+
+## License
+
+This project is licensed under the MIT License.
